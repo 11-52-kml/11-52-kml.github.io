@@ -18,7 +18,8 @@ Kada otvorite alat, videćete interaktivnu mapu sveta.
 ### 1. Pronađite željenu lokaciju
 
 * **Pomeranje mape:** kliknite i držite levi taster miša, pa pomerajte.  
-* **Zumiranje:** koristite točkić miša ili dugmiće **“+”** i **“–”** na mapi da se približite ili udaljite.  
+* **Zumiranje:** koristite točkić miša ili dugmiće **“+”** i **“–”** na mapi da se približite ili udaljite.
+* * **Korišćenje lupe za pretragu:** Možete koristiti i lupu u gornjem desnom uglu da biste brže našli grad ili mesto u kome se nalazi željena lokacija, a zatim ručno prevucite na tačnu lokaciju.
 * Podesite prikaz tako da jasno vidite celu površinu predviđenu za performans.
 
 ### 2. Postavite oblik **„11:52“** na mapu
