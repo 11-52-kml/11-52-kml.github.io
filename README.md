@@ -9,7 +9,7 @@ Te pozicije kasnije možete lako uvesti u **Google My Maps** kako bi svako znao 
 
 Alatu pristupate putem [ovog linka](https://11-52-kml.github.io/) .  
 
-Osim tekstualnog uputstva u nastavku, postoji i sledeće video uputstvo koje možete pratiti:
+Osim tekstualnog uputstva u nastavku teksta, postoji i sledeće video uputstvo koje možete pratiti:
 
 <video controls src="https://github.com/user-attachments/assets/d8a593cb-e0ec-428f-be7a-5fe7706a0909"></video>
 
