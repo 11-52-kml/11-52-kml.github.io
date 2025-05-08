@@ -66,7 +66,7 @@ Ponovite dok oblik ne bude orijentisan kako želite.
 ## KORAK 5: Preuzimanje KML fajla sa koordinatama
 
 1. Kliknite **`Export KML`**.  
-2. Pregledač će preuzeti fajl **`svg_points.kml`** – sačuvajte ga na lako dostupno mesto (Desktop, Downloads…).
+2. Pregledač će preuzeti fajl **`11-52.kml`** – sačuvajte ga na lako dostupno mesto (Desktop, Downloads…).
 
 > **Šta je KML fajl?**  
 > KML je format koji **Google Earth** i **Google My Maps** koriste za prikazivanje geografskih podataka (tačke, linije, oblici).  
@@ -86,7 +86,7 @@ Ponovite dok oblik ne bude orijentisan kako želite.
    * U levom panelu, ispod naziva sloja (*“Untitled layer”*), kliknite **`Import`**.  
 
    * U prozoru **“Choose a file to import”**:
-     * Prevucite **`svg_points.kml`** u prozor **ili**
+     * Prevucite **`11-52.kml`** u prozor **ili**
      * Kliknite **“Select a file from your device”**, pronađite fajl i odaberite **`Open`**.
 
 5. **Proverite uvezene tačke**
