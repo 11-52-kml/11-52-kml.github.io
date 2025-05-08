@@ -65,7 +65,7 @@ Ponovite dok oblik ne bude orijentisan kako želite.
 3. Pojaviće se obaveštenje o ukupnom broju generisanih tačaka.  
    * Prelaskom miša preko tačke videćete njen redni broj (*npr.* “Point 1”, “Point 2”…).
 
-> **Savet:** Ako niste zadovoljni brojem tačaka ili rasporedom, promenite vrednost **`Distance (m)`** ili skalirajte SVG, pa ponovo kliknite **`Generate Points on SVG`**.
+> **Savet:** Ako niste zadovoljni brojem tačaka ili rasporedom, promenite vrednost **`Distance (m)`** ili promenite veličinu oblika, pa ponovo kliknite **`Generate Points on SVG`**.
 
 ---
 
