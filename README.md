@@ -9,6 +9,9 @@ Te pozicije kasnije možete lako uvesti u **Google My Maps** kako bi svako znao 
 
 Alatu pristupate putem [ovog linka](https://11-52-kml.github.io/) .  
 
+Uputstvo za generisanje oblika se nalazi u nastavku teksta, a od skoro je dostupno i [video uputstvo](https://github.com/user-attachments/assets/d8a593cb-e0ec-428f-be7a-5fe7706a0909).
+
+
 ---
 
 ## KORAK 1: Priprema mape i postavljanje oblika **„11:52“**
