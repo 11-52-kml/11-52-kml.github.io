@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SVG Overlay Point Generator</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- ADDED: Leaflet Control Geocoder CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    #map {
+      width: 100%; flex-grow: 1; min-height: 200px;
+      position: relative;
+    }
+    #controls {
+      padding: 12px; background: #f4f4f4; border-top: 1px solid #ccc;
+      overflow-y: auto; max-height: 40%;
+      flex-shrink: 0;
+    }
+    .control-group {
+      margin-bottom: 10px; padding-bottom: 10px;
+      border-bottom: 1px dashed #ddd;
+    }
+    .control-group:last-child {
+      border-bottom: none; margin-bottom: 0; padding-bottom: 0;
+    }
+    .control-group > label:first-child {
+      font-weight: bold; display: block; margin-bottom: 5px;
+    }
+    #controls label, #controls button, #controls input[type="number"] {
+      display: inline-block; margin: 5px 8px 5px 0; vertical-align: middle;
+    }
+    #controls input[type="number"] {
+      width: 65px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; margin-left: 2px;
+    }
+    .my-svg-layer { pointer-events: none; }
+    .my-svg-layer svg {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: auto; user-select: none;
+      overflow: visible; cursor: grab;
+    }
+    .my-svg-layer svg:active { cursor: grabbing; }
+    #svg-content-group {}
+
+    /* Optional: Style the geocoder for better fit if needed */
+    .leaflet-control-geocoder-form input {
+        min-width: 200px; /* Or whatever width you prefer */
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <div id="controls">
+    <div class="control-group">
+      <label>1. Position Map & Place SVG:</label>
+      <button id="btnPlaceSVG" disabled>Place SVG Here</button>
+      <span id="svgStatus" style="font-style: italic; color: #555;">(Loading SVG...)</span>
+    </div>
+
+    <div class="control-group">
+      <label>2. Point Spacing:</label>
+      <div>
+        <label for="singleDist">Distance (m):</label>
+        <input type="number" id="singleDist" value="1" min="0.1" step="0.1" disabled>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>3. Generate & Export:</label>
+      <button id="btnGeneratePoints" disabled>Generate Points on SVG</button>
+      <button id="btnExportKML" disabled>Export KML</button>
+    </div>
+
+    <div class="control-group">
+      <label>4. Adjust SVG:</label>
+      <button id="btnRotateLeft" disabled>Rotate Left (-10°)</button>
+      <button id="btnRotateRight" disabled>Rotate Right (+10°)</button>
+      <button id="btnScaleUp" disabled>Scale Up (x1.1)</button>
+      <button id="btnScaleDown" disabled>Scale Down (x0.9)</button>
+    </div>
+  </div>
+
+  <!-- Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- ADDED: Leaflet Control Geocoder JS -->
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@svgdotjs/svg.js@3.1.2/dist/svg.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@svgdotjs/svg.draggable.js@3.0.2/dist/svg.draggable.min.js"></script>
+  <script src="./js/libs/svg-path-properties.js"></script> <!-- Assuming this is correctly pathed locally -->
+  <script src="https://cdn.jsdelivr.net/npm/tokml@0.4.0/tokml.min.js"></script>
+
+  <script>
+  "use strict";
+
+  // --- Configuration ---
+  const SVG_PATH_TO_LOAD       = './svg/11-52.svg'; // Make sure this path is correct
+  const POINT_MARKER_OPTIONS   = { radius: 3, color: 'red', fillColor: '#f03', fillOpacity: 0.8, weight: 1 };
+  const MAX_POINTS_PER_PATH    = 20000;
+
+  let map, svgLayer, svgRoot, svgGroup;
+  let userPathElements = [], generatedPoints = [], pointMarkers = [];
+  let localSVGWidth = 300, localSVGHeight = 300;
+  let currentRotation = 0, currentScale = 1;
+  let SvgPathPropertiesConstructor = null;
+
+  // Deferred‐placement flags
+  let loadedSvgText = null, isSvgDataLoaded = false;
+
+  // 1️⃣ Dependency check
+  function checkDependencies() {
+    let ok = true;
+    if (typeof L === 'undefined')    { console.error("Leaflet (L) missing!"); ok = false; }
+    // MODIFIED: Added check for Leaflet Control Geocoder
+    if (typeof L.Control === 'undefined' || typeof L.Control.Geocoder === 'undefined') {
+        console.error("Leaflet Control Geocoder missing!"); ok = false;
+    }
+    if (typeof SVG === 'undefined')  { console.error("svg.js (SVG) missing!"); ok = false; }
+    if (SVG.extend && SVG.Element && typeof SVG.Element.prototype.draggable === 'undefined') { // Check draggable correctly
+      console.error("svg.draggable.js missing or not loaded correctly!"); ok = false;
+    }
+    if (typeof svgPathProperties === 'undefined') {
+      console.error("svg-path-properties missing!"); ok = false;
+    } else {
+      SvgPathPropertiesConstructor = typeof svgPathProperties === 'function'
+        ? svgPathProperties
+        : (svgPathProperties.svgPathProperties || svgPathProperties.default);
+      if (typeof SvgPathPropertiesConstructor !== 'function') {
+        console.error("Bad svg-path-properties export:", svgPathProperties);
+        ok = false;
+      }
+    }
+    if (typeof tokml === 'undefined') { console.error("tokml missing!"); ok = false; }
+    if (!ok) alert("Critical dependency missing! Check console for details.");
+    return ok;
+  }
+
+  // 2️⃣ Custom SVG overlay layer
+  const CustomSvgLayer = L.Layer.extend({
+    initialize(svgEl, bounds, opts) {
+      this._svgElement = svgEl;
+      this._bounds     = L.latLngBounds(bounds);
+      L.setOptions(this, opts);
+    },
+    onAdd(map) {
+      this._map = map;
+      if (!this._container) {
+        this._container = L.DomUtil.create('div','my-svg-layer leaflet-zoom-animated');
+        this._container.appendChild(this._svgElement);
+      }
+      map.getPanes().overlayPane.appendChild(this._container);
+      this._update();
+      map.on('zoomend viewreset moveend', this._update, this);
+    },
+    onRemove(map) {
+      if (this._container) map.getPanes().overlayPane.removeChild(this._container);
+      map.off('zoomend viewreset moveend', this._update, this);
+      this._container = null; this._map = null;
+    },
+    _update() {
+      if (!this._map || !this._bounds || !this._container) return;
+      const tl = this._map.latLngToLayerPoint(this._bounds.getNorthWest());
+      const br = this._map.latLngToLayerPoint(this._bounds.getSouthEast());
+      const w = Math.max(0, br.x - tl.x), h = Math.max(0, br.y - tl.y);
+      L.DomUtil.setPosition(this._container, tl);
+      this._container.style.width  = w + 'px';
+      this._container.style.height = h + 'px';
+    },
+    setBounds(b) {
+      this._bounds = L.latLngBounds(b);
+      if (this._map) this._update();
+      return this;
+    },
+    getBounds() { return this._bounds; }
+  });
+  L.customSvgLayer = (svgEl, bounds, opts) => new CustomSvgLayer(svgEl, bounds, opts);
+
+  // 3️⃣ Initialize map & UI
+  function initMap() {
+    map = L.map('map').setView([0,0],2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19, attribution:'© OSM contributors'
+    }).addTo(map);
+    L.control.scale({ imperial:false }).addTo(map);
+
+    // MODIFIED: Initialize and add Geocoder control
+    L.Control.geocoder({
+        defaultMarkGeocode: true, // true to add a marker, false to just pan/zoom
+        placeholder: "Search for a place...",
+        errorMessage: "Nothing found.",
+        geocoder: L.Control.Geocoder.nominatim({
+            // Optional: You can provide specific Nominatim parameters if needed
+            // geocodingQueryParams: { countrycodes: 'us' } // e.g., limit to US
+        })
+    })
+    .on('markgeocode', function(e) {
+      // When a geocode result is selected
+      var bbox = e.geocode.bbox;
+      var poly = L.polygon([
+        bbox.getSouthEast(),
+        bbox.getNorthEast(),
+        bbox.getNorthWest(),
+        bbox.getSouthWest()
+      ]);
+      map.fitBounds(poly.getBounds());
+      // You could also just do: map.setView(e.geocode.center, map.getZoom() > 15 ? map.getZoom() : 15);
+    })
+    .addTo(map);
+  }
+
+  function updateUI() {
+    const placed = !!svgLayer;
+    const hasPts = generatedPoints.length>0;
+
+    document.getElementById('btnPlaceSVG').disabled    = !isSvgDataLoaded || placed;
+    document.getElementById('svgStatus').textContent   = isSvgDataLoaded
+      ? (placed? " (SVG Placed)" : " (SVG Ready – Navigate & Place)")
+      : " (Loading SVG...)";
+
+    document.getElementById('singleDist').disabled     = !placed;
+    document.getElementById('btnGeneratePoints').disabled = !placed;
+    document.getElementById('btnExportKML').disabled  = !placed || !hasPts;
+    ['btnRotateLeft','btnRotateRight','btnScaleUp','btnScaleDown']
+      .forEach(id=>document.getElementById(id).disabled = !placed);
+  }
+
+  // 4️⃣ Load & process SVG (deferred placement)
+  function processLoadedSVGData(svgText) {
+    try {
+      const parser = new DOMParser(),
+            doc    = parser.parseFromString(svgText,'image/svg+xml'),
+            err    = doc.querySelector('parsererror');
+      if (err) throw new Error("SVG Parser Error: " + err.textContent.trim());
+
+
+      const root = doc.documentElement;
+      if (!root || root.tagName.toLowerCase()!=='svg') {
+        throw new Error("No <svg> root element found in the SVG file.");
+      }
+
+      let [w,h]=[0,0];
+      const vb = root.getAttribute('viewBox');
+      if (vb) {
+        const parts = vb.split(/[\s,]+/).map(Number);
+        if (parts.length===4) [w,h] = [parts[2],parts[3]];
+      }
+      if (!w||!h) {
+        w = parseFloat(root.getAttribute('width'))  || 300;
+        h = parseFloat(root.getAttribute('height')) || 300;
+      }
+      localSVGWidth = w>0? w:300;
+      localSVGHeight= h>0? h:300;
+
+      loadedSvgText   = svgText;
+      isSvgDataLoaded = true;
+    } catch (e) {
+      console.error("SVG processing failed:",e);
+      alert("Failed to process SVG: "+e.message);
+      isSvgDataLoaded = false;
+      loadedSvgText   = null;
+    } finally {
+      updateUI();
+    }
+  }
+
+  async function loadAndProcessSVG(path) {
+    isSvgDataLoaded = false; loadedSvgText = null;
+    updateUI();
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error("HTTP "+res.status + " " + res.statusText);
+      const txt = await res.text();
+      processLoadedSVGData(txt);
+    } catch (e) {
+      console.error("SVG load error:",e);
+      alert("Failed to load SVG from '"+ path +"': "+e.message);
+      document.getElementById('svgStatus').textContent = " (Error Loading SVG)";
+      updateUI();
+    }
+  }
+  // 5️⃣ SVG Transformations
+  function applyTransform() {
+    if (!svgGroup) return;
+    svgGroup.transform({
+      rotate: currentRotation,
+      scale:  currentScale,
+      origin: [localSVGWidth/2, localSVGHeight/2] // SVG's own coordinate system origin
+    });
+    if (generatedPoints.length) drawGeneratedPoints();
+  }
+  function rotateSVG(deg) {
+    if (!svgLayer) return;
+    currentRotation += deg;
+    applyTransform();
+  }
+  function scaleSVG(f) {
+    if (!svgLayer) return;
+    currentScale *= f;
+    applyTransform();
+  }
+
+  // 6️⃣ Calculate spacing in SVG units
+  function getDistanceParams() {
+    if (!svgLayer||!map||!svgRoot||!svgGroup) return null;
+    let mpsu; // meters per SVG unit
+    try {
+      // Use two points on the SVG's original coordinate system,
+      // then transform them to screen, then to LatLng to get real-world distance.
+      const svgPoint1 = {x:0, y:localSVGHeight/2};
+      const svgPoint2 = {x:localSVGWidth, y:localSVGHeight/2};
+
+      const latLng1 = _getTransformedLatLng(svgPoint1);
+      const latLng2 = _getTransformedLatLng(svgPoint2);
+
+      if (!latLng1 || !latLng2) {
+          throw new Error("Could not transform SVG points to LatLng for scale calculation.");
+      }
+
+      const mapDistance = map.distance(latLng1, latLng2); // meters
+
+      if (localSVGWidth <= 0) throw new Error("localSVGWidth is zero or negative.");
+      mpsu = mapDistance / localSVGWidth;
+
+      if (!isFinite(mpsu)||mpsu<=0) throw new Error("Calculated meters per SVG unit is invalid: " + mpsu);
+    } catch (e) {
+      console.error("Scale calculation error:",e);
+      alert("Scale calculation failed: "+e.message);
+      return null;
+    }
+    const meters = parseFloat(document.getElementById('singleDist').value);
+    if (!(meters>0)) {
+      alert("Please enter a positive distance value for point spacing.");
+      return null;
+    }
+    const svgSpacing = meters / mpsu;
+
+    return { mode:'single', options:{ singleDist: Math.max(1e-6, svgSpacing) } };
+  }
+
+  // 7️⃣ Extract path data & generate points
+  function _getPathDataFromElement(el) {
+    if (!el) return null;
+    const tag = el.tagName.toLowerCase();
+    let d = '';
+    try {
+      switch(tag) {
+        case 'path':
+          d = el.getAttribute('d')||''; break;
+        case 'line':
+          const x1=+el.getAttribute('x1'),y1=+el.getAttribute('y1'),
+                x2=+el.getAttribute('x2'),y2=+el.getAttribute('y2');
+          if ([x1,y1,x2,y2].some(v => isNaN(v))) throw "Invalid line coordinates";
+          d = `M ${x1} ${y1} L ${x2} ${y2}`; break;
+        case 'polyline':
+        case 'polygon':
+          const ptsStr = (el.getAttribute('points')||'').trim();
+          if (!ptsStr) throw "Empty points attribute";
+          const pts = ptsStr.split(/[\s,]+/).map(Number);
+          if (pts.length<2 || pts.length%2 !== 0 || pts.some(isNaN)) throw "Bad points data";
+          d = `M ${pts[0]} ${pts[1]}`;
+          for (let i = 2; i < pts.length; i += 2) {
+            d += ` L ${pts[i]} ${pts[i+1]}`;
+          }
+          if (tag==='polygon') d += ' Z';
+          break;
+        case 'rect':
+          const x=+(el.getAttribute('x')||0),y=+(el.getAttribute('y')||0),
+                w=+(el.getAttribute('width')),h=+(el.getAttribute('height'));
+          if ([w,h].some(v=>isNaN(v)||v<=0)) throw "Invalid rect dimensions";
+          d = `M ${x} ${y} H ${x+w} V ${y+h} H ${x} Z`; break;
+        case 'circle':
+          const cx=+el.getAttribute('cx'),cy=+el.getAttribute('cy'),
+                r=+el.getAttribute('r');
+          if ([cx,cy,r].some(isNaN) || r<=0) throw "Invalid circle parameters";
+          d = `M ${cx-r} ${cy} A ${r},${r} 0 1,0 ${cx+r},${cy} A ${r},${r} 0 1,0 ${cx-r},${cy} Z`;
+          break;
+        case 'ellipse':
+          const ecx=+el.getAttribute('cx'),ecy=+el.getAttribute('cy'),
+                rx=+el.getAttribute('rx'),ry=+el.getAttribute('ry');
+          if ([ecx,ecy,rx,ry].some(isNaN) || rx<=0 || ry<=0) throw "Invalid ellipse parameters";
+          d = `M ${ecx-rx} ${ecy} A ${rx},${ry} 0 1,0 ${ecx+rx},${ecy} A ${rx},${ry} 0 1,0 ${ecx-rx},${ecy} Z`;
+          break;
+        default:
+          return null;
+      }
+      return d.trim()||null;
+    } catch(e) {
+      console.warn(`Skipping element <${tag}> due to error in path data extraction:`,e, el);
+      return null;
+    }
+  }
+
+  function _generatePointsForPath(dAttr, mode, opts, props) {
+    const pts = [];
+    if (!SvgPathPropertiesConstructor) {
+        console.error("SvgPathPropertiesConstructor is not initialized.");
+        return pts;
+    }
+    try {
+      const prop = new SvgPathPropertiesConstructor(dAttr);
+      const len  = prop.getTotalLength();
+
+      if (len<1e-6) {
+        const p0=prop.getPointAtLength(0);
+        if(p0) pts.push({...p0,...props});
+        return pts;
+      }
+
+      let currentDist = 0;
+      const startPoint = prop.getPointAtLength(0);
+      if (startPoint) pts.push({...startPoint, ...props});
+
+      currentDist += opts.singleDist;
+
+      while(currentDist < len) {
+        const p=prop.getPointAtLength(currentDist);
+        if(p) pts.push({...p,...props});
+        if(pts.length >= MAX_POINTS_PER_PATH) {
+            console.warn(`Reached MAX_POINTS_PER_PATH (${MAX_POINTS_PER_PATH}) for path ${props.sourceId}. Stopping point generation for this path.`);
+            break;
+        }
+        currentDist += opts.singleDist;
+      }
+
+      const endPoint = prop.getPointAtLength(len);
+      if (endPoint) {
+          const lastGeneratedPoint = pts[pts.length - 1];
+          if (!lastGeneratedPoint || Math.hypot(endPoint.x - lastGeneratedPoint.x, endPoint.y - lastGeneratedPoint.y) > 1e-5) {
+              if (pts.length < MAX_POINTS_PER_PATH) {
+                  pts.push({...endPoint, ...props});
+              }
+          }
+      }
+
+    } catch(e) {
+      console.error(`Point generation error for path (sourceId: ${props.sourceId}):`,e, "Path data:", dAttr);
+    }
+    return pts;
+  }
+
+  function generatePoints() {
+    if(!svgLayer||!svgRoot||!userPathElements.length) {
+      return alert("SVG not placed or no vector elements found in the SVG.");
+    }
+    const p = getDistanceParams();
+    if(!p) return;
+
+    generatedPoints=[];
+    pointMarkers.forEach(m=>map.removeLayer(m));
+    pointMarkers=[];
+
+    let totalPointsGenerated=0, pathsProcessed=0, pathsSkipped=0;
+    userPathElements.forEach((el,i)=>{
+      const id = el.id || `svgElement_idx${i}`;
+      const tag = el.tagName.toLowerCase();
+      const d  = _getPathDataFromElement(el);
+
+      if(!d){ pathsSkipped++; return; }
+
+      pathsProcessed++;
+      const newPts = _generatePointsForPath(d,p.mode,p.options,{
+        sourceIndex:i, sourceId:id, sourceTag:tag
+      });
+
+      if(newPts.length){
+        generatedPoints.push(...newPts);
+        totalPointsGenerated+=newPts.length;
+      }
+    });
+
+    if(totalPointsGenerated > 0){
+      drawGeneratedPoints();
+      alert(`Generated ${totalPointsGenerated} points from ${pathsProcessed} SVG elements (${pathsSkipped} elements skipped).`);
+    } else {
+      alert(`No points generated. Processed ${pathsProcessed} SVG elements, skipped ${pathsSkipped}. Check console for warnings if elements were skipped or if path data was problematic.`);
+    }
+    updateUI();
+  }
+
+  // 8️⃣ Place SVG on the map
+  function placeSVGOnMap() {
+    if(!isSvgDataLoaded||!loadedSvgText){
+      return alert("SVG data not ready or failed to load.");
+    }
+    if(svgLayer){ map.removeLayer(svgLayer); svgLayer=null; }
+    if(svgRoot){ svgRoot.remove(); svgRoot=null; svgGroup=null; }
+
+    userPathElements=[]; generatedPoints=[]; pointMarkers.forEach(m=>map.removeLayer(m)); pointMarkers=[];
+    currentRotation=0; currentScale=1;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = loadedSvgText;
+    const parsedSVGElement = tempDiv.querySelector('svg');
+
+    if (!parsedSVGElement) {
+        return alert("Failed to parse SVG string into an SVG element.");
+    }
+
+    if (!parsedSVGElement.getAttribute('viewBox')) {
+        parsedSVGElement.setAttribute('viewBox', `0 0 ${localSVGWidth} ${localSVGHeight}`);
+    }
+    parsedSVGElement.setAttribute('width','100%');
+    parsedSVGElement.setAttribute('height','100%');
+    parsedSVGElement.setAttribute('preserveAspectRatio','xMidYMid meet');
+
+    const center  = map.getCenter();
+    const zoom    = map.getZoom();
+    const mapSize = map.getSize();
+
+    const aspectRatio = localSVGWidth / localSVGHeight;
+    let initialPixelWidth = Math.min(mapSize.x * 0.5, mapSize.y * 0.5 * aspectRatio, 600);
+    let initialPixelHeight = initialPixelWidth / aspectRatio;
+
+    if (aspectRatio < 1) {
+        initialPixelHeight = Math.min(mapSize.y * 0.5, mapSize.x * 0.5 / aspectRatio, 600);
+        initialPixelWidth = initialPixelHeight * aspectRatio;
+    }
+
+    const centerPx     = map.project(center,zoom);
+    const nwPx    = centerPx.subtract([initialPixelWidth/2, initialPixelHeight/2]);
+    const sePx    = centerPx.add([initialPixelWidth/2, initialPixelHeight/2]);
+    const bounds  = L.latLngBounds(
+        map.unproject(nwPx,zoom),
+        map.unproject(sePx,zoom)
+    );
+
+    svgLayer = L.customSvgLayer(parsedSVGElement, bounds).addTo(map);
+    svgRoot  = SVG(parsedSVGElement);
+    svgGroup = svgRoot.group().id('svg-content-group');
+
+    const childrenToMove = [];
+    svgRoot.each(function(i, children) {
+        if (this.node !== svgGroup.node &&
+            this.type !== 'defs' && this.type !== 'metadata' &&
+            this.type !== 'title' && this.type !== 'desc' &&
+            this.type !== 'style' && this.type !== 'script') {
+            childrenToMove.push(this);
+        }
+    }, true);
+
+
+    childrenToMove.forEach(child => {
+        try {
+          svgGroup.add(child);
+        } catch(e) {
+          console.warn("Failed to move element to group:", child.node.tagName, e);
+        }
+    });
+
+    applyTransform();
+
+    if(svgGroup.draggable && typeof svgGroup.draggable === 'function'){
+      svgGroup.draggable()
+        .on('dragstart.namespace', e => {
+          map.dragging.disable();
+          e.detail.handler.el.remember('_initialLayerBounds', svgLayer.getBounds());
+        })
+        .on('dragmove.namespace', e => {
+          const initialLayerBounds = e.detail.handler.el.remember('_initialLayerBounds');
+          if(!initialLayerBounds) return;
+
+          const {x:dx,y:dy} = e.detail.delta;
+
+          const nwOld = map.latLngToLayerPoint(initialLayerBounds.getNorthWest());
+          const seOld = map.latLngToLayerPoint(initialLayerBounds.getSouthEast());
+
+          const nwNew = nwOld.add([dx, dy]);
+          const seNew = seOld.add([dx, dy]);
+
+          const newBounds = L.latLngBounds(
+            map.layerPointToLatLng(nwNew),
+            map.layerPointToLatLng(seNew)
+          );
+          svgLayer.setBounds(newBounds);
+          if(generatedPoints.length) drawGeneratedPoints();
+        })
+        .on('dragend.namespace', e => {
+          map.dragging.enable();
+          e.detail.handler.el.forget('_initialLayerBounds');
+          if(generatedPoints.length) drawGeneratedPoints();
+        });
+    } else {
+        console.warn("SVG.draggable is not available on svgGroup.");
+    }
+    userPathElements = Array.from(parsedSVGElement.querySelectorAll('path,line,polyline,polygon,rect,circle,ellipse'));
+    if(!userPathElements.length){
+      alert("Warning: No recognized vector shapes (path, line, polyline, polygon, rect, circle, ellipse) found in the SVG. Point generation may not work.");
+    }
+    updateUI();
+  }
+
+  // 9️⃣ Draw point markers
+  function _getTransformedLatLng(svgPoint) {
+    if(!svgRoot || !svgGroup || !map || !svgLayer) return null;
+
+    const svgElement = svgLayer._svgElement;
+    if (!svgElement) return null;
+
+    const pt = svgElement.createSVGPoint();
+    pt.x = svgPoint.x;
+    pt.y = svgPoint.y;
+
+    const groupCTM = svgGroup.node.getCTM();
+    const svgCTM = svgElement.getScreenCTM();
+
+    if (!groupCTM || !svgCTM) {
+        console.warn("Could not get CTM for point transformation.");
+        return null;
+    }
+    
+    const screenPoint = pt.matrixTransform(svgGroup.node.getScreenCTM());
+    
+    const mapContainerRect = map.getContainer().getBoundingClientRect();
+    const containerX = screenPoint.x - mapContainerRect.left;
+    const containerY = screenPoint.y - mapContainerRect.top;
+
+    return map.containerPointToLatLng([containerX, containerY]);
+  }
+
+  function drawGeneratedPoints() {
+    pointMarkers.forEach(m=>map.removeLayer(m));
+    pointMarkers = [];
+    let successfulDraws = 0;
+    let failedDraws = 0;
+
+    generatedPoints.forEach((pt,i)=>{
+      const ll = _getTransformedLatLng(pt);
+      if(ll){
+        const mk = L.circleMarker(ll,POINT_MARKER_OPTIONS)
+          .bindTooltip(`Point ${i+1}<br>Source: ${pt.sourceTag} ${pt.sourceId}`);
+        mk.addTo(map);
+        pointMarkers.push(mk);
+        successfulDraws++;
+      } else {
+        failedDraws++;
+      }
+    });
+    if(failedDraws > 0) console.warn(`Failed to draw ${failedDraws} points (could not transform to LatLng). Succeeded: ${successfulDraws}.`);
+  }
+
+
+  /**
+   * Builds an array of simple placemark objects from generatedPoints.
+   */
+  function buildPlacemarks() {
+    return generatedPoints
+      .map((pt, i) => {
+        const ll = _getTransformedLatLng(pt);
+        if (!ll) {
+            console.warn(`Could not get LatLng for point index ${i} (source: ${pt.sourceId}). Skipping in KML.`);
+            return null;
+        }
+        return {
+          index:       i + 1,
+          lon:         ll.lng,
+          lat:         ll.lat,
+          sourceId:    pt.sourceId || "unknown",
+          sourceTag:   pt.sourceTag || "unknown"
+        };
+      })
+      .filter(p => p !== null);
+  }
+
+
+  /**
+   * Exports the current set of generatedPoints as a KML file.
+   */
+  function exportKML() {
+    const placemarksData = buildPlacemarks();
+    if (placemarksData.length === 0) {
+      return alert("No point data to export. Generate points first or check console for errors if points exist but could not be transformed.");
+    }
+
+    let kmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+                     `<kml xmlns="http://www.opengis.net/kml/2.2">\n` +
+                     `  <Document>\n` +
+                     `    <name>SVG Exported Points</name>\n` +
+                     `    <Folder>\n` +
+                     `      <name>Generated Points</name>\n`;
+
+    placemarksData.forEach(p => {
+      kmlContent +=
+`      <Placemark>\n` +
+`        <name>${p.index}</name>\n` +
+`        <description>Source Element ID: ${p.sourceId}, Type: ${p.sourceTag}</description>\n` +
+`        <Point>\n` +
+`          <coordinates>${p.lon},${p.lat},0</coordinates>\n` +
+`        </Point>\n` +
+`      </Placemark>\n`;
+    });
+
+    kmlContent += `    </Folder>\n` +
+                  `  </Document>\n` +
+                  `</kml>`;
+
+    const blob = new Blob([kmlContent], { type: "application/vnd.google-earth.kml+xml;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.style.display = 'none';
+    a.href     = url;
+    a.download = "svg_points.kml";
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    console.log(`KML export initiated with ${placemarksData.length} placemarks.`);
+  }
+
+  // Init everything
+  document.addEventListener('DOMContentLoaded',()=>{
+    if(!checkDependencies()){
+      return;
+    }
+    initMap();
+    loadAndProcessSVG(SVG_PATH_TO_LOAD);
+    document.getElementById('btnPlaceSVG').addEventListener('click', placeSVGOnMap);
+    document.getElementById('btnGeneratePoints').addEventListener('click', generatePoints);
+    document.getElementById('btnExportKML').addEventListener('click', exportKML);
+    document.getElementById('btnRotateLeft').addEventListener('click', ()=>rotateSVG(-10));
+    document.getElementById('btnRotateRight').addEventListener('click', ()=>rotateSVG(10));
+    document.getElementById('btnScaleUp').addEventListener('click', ()=>scaleSVG(1.1));
+    document.getElementById('btnScaleDown').addEventListener('click', ()=>scaleSVG(0.9));
+    updateUI();
+  });
+  </script>
+</body>
+</html>
