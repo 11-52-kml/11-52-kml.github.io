@@ -107,3 +107,4 @@ Ponovite dok oblik ne bude orijentisan kako želite.
    * Kliknite **`Share`** u levom panelu.  
    * Uključite opciju **“Anyone with the link can view”**, kopirajte link i podelite ga.  
    * Učesnici mogu otvoriti mapu na telefonu, pronaći svoj broj i videti tačnu lokaciju gde treba da stanu.
+   * Takođe, možete iskoristiti traku za obeležavanje/upozoravanje da prvo obeležite oblik fizički, radi lakšeg i preciznijeg pozicioniranja učesnika.
