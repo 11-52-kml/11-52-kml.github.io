@@ -1,3 +1,5 @@
+[Read this document in English](README_EN.md)
+
 # Uputstvo za kreiranje koordinata za performans
 
 Ovaj alat je napravljen da Vam pomogne da isplanirate vizuelni performans tako što ćete na mapi Vašeg grada postaviti željeni oblik (u ovom slučaju brojeve **„11:52“**) i zatim generisati tačne pozicije (koordinate) za svakog učesnika.  
