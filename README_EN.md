@@ -104,3 +104,4 @@ Repeat until the shape is oriented as desired.
     * Click **`Share`** in the left panel.
     * Enable the option **“Anyone with the link can view”**, copy the link, and share it.
     * Participants can open the map on their phones, find their number, and see the exact location where they need to stand.
+    * You can also use the map to first mark the shape physically with marking/warning tape (putting some weights on the corners) for easier and more precise positioning of participants. 
