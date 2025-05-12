@@ -1,6 +1,6 @@
 # Instructions for Creating Performance Coordinates
 
-This tool is designed to help you plan a visual performance by placing a desired shape (in this case, the numbers **"11:52"**) on a map of your city and then generating the exact positions (coordinates) for each participant.
+This tool is designed to help you plan a visual performance by placing a desired shape (in this case, the numbers **"11.52"**) on a map of your city and then generating the exact positions (coordinates) for each participant.
 You can later easily import these positions into **Google My Maps** so everyone knows where they need to stand.
 
 ---
