@@ -72,6 +72,7 @@ Repeat until the shape is oriented as desired.
 
 1.  Click **`Export KML`**.
 2.  Your browser will download the file **`11-52.kml`** – save it to an easily accessible location (Desktop, Downloads…).
+3.  **A message with the shape's center coordinates will appear** – write down or copy the **latitude** and **longitude** values.
 
 > **What is a KML file?**
 > KML is a format used by **Google Earth** and **Google My Maps** to display geographic data (points, lines, shapes).
@@ -79,7 +80,23 @@ Repeat until the shape is oriented as desired.
 
 ---
 
-## STEP 6: Importing Coordinates into Google My Maps
+## STEP 6: Registering Your Performance Location
+
+1. Open the location registration form: **[https://forms.gle/zqu44HTUuif2xne56](https://forms.gle/zqu44HTUuif2xne56)**
+2. Fill in the required information:
+   * **City** (for diaspora, also include the country)
+   * **Location name**
+   * **Map link** (after you create your map in Google My Maps - see Step 7)
+   * **Latitude (geografska širina)** – copy the value from the message that appeared when exporting the KML file
+   * **Longitude (geografska dužina)** – copy the value from the message that appeared when exporting the KML file
+   * Other required information (contact, number of participants, recording equipment...)
+3. Click **Submit** to register your location.
+
+> **Note:** The center coordinates of the shape are automatically calculated and displayed when exporting the KML file. These coordinates are used to record the central point of your performance.
+
+---
+
+## STEP 7: Importing Coordinates into Google My Maps
 
 1.  Open **[Google My Maps](https://www.google.com/mymaps)** and sign in with your Google account.
 2.  Click **`+ CREATE A NEW MAP`**.
