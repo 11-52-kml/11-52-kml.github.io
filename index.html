@@ -679,10 +679,34 @@
       return alert("No point data to export. Generate points first or check console for errors if points exist but could not be transformed.");
     }
 
+    // Calculate the center of the SVG shape
+    const bounds = svgLayer.getBounds();
+    const center = bounds.getCenter();
+    const centerLat = center.lat.toFixed(6);
+    const centerLon = center.lng.toFixed(6);
+
     let kmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n` +
                      `<kml xmlns="http://www.opengis.net/kml/2.2">\n` +
                      `  <Document>\n` +
                      `    <name>SVG Exported Points</name>\n` +
+                     `    <description>Shape Center: Lat ${centerLat}, Lon ${centerLon}</description>\n` +
+                     `    <Folder>\n` +
+                     `      <name>Shape Center</name>\n` +
+                     `      <Placemark>\n` +
+                     `        <name>Center</name>\n` +
+                     `        <description>Center of SVG shape&lt;br&gt;Latitude: ${centerLat}&lt;br&gt;Longitude: ${centerLon}</description>\n` +
+                     `        <styleUrl>#centerStyle</styleUrl>\n` +
+                     `        <Point>\n` +
+                     `          <coordinates>${centerLon},${centerLat},0</coordinates>\n` +
+                     `        </Point>\n` +
+                     `      </Placemark>\n` +
+                     `    </Folder>\n` +
+                     `    <Style id="centerStyle">\n` +
+                     `      <IconStyle>\n` +
+                     `        <color>ff0000ff</color>\n` +
+                     `        <scale>1.2</scale>\n` +
+                     `      </IconStyle>\n` +
+                     `    </Style>\n` +
                      `    <Folder>\n` +
                      `      <name>Generated Points</name>\n`;
 
@@ -712,7 +736,8 @@
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
 
-    console.log(`KML export initiated with ${placemarksData.length} placemarks.`);
+    console.log(`KML export initiated with ${placemarksData.length} placemarks. Shape center: ${centerLat}, ${centerLon}`);
+    alert(`KML exported with ${placemarksData.length} points.\nShape Center:\nLatitude: ${centerLat}\nLongitude: ${centerLon}`);
   }
 
   // Init everything
@@ -734,3 +759,4 @@
   </script>
 </body>
 </html>
+
