@@ -75,6 +75,7 @@ Ponovite dok oblik ne bude orijentisan kako želite.
 
 1. Kliknite **`Export KML`**.  
 2. Pregledač će preuzeti fajl **`11-52.kml`** – sačuvajte ga na lako dostupno mesto (Desktop, Downloads…).
+3. **Pojaviće se poruka sa koordinatama centra oblika** – zapišite ili kopirajte geografsku širinu (**latitude**) i geografsku dužinu (**longitude**).
 
 > **Šta je KML fajl?**  
 > KML je format koji **Google Earth** i **Google My Maps** koriste za prikazivanje geografskih podataka (tačke, linije, oblici).  
@@ -82,7 +83,23 @@ Ponovite dok oblik ne bude orijentisan kako želite.
 
 ---
 
-## KORAK 6: Uvoz koordinata u Google My Maps
+## KORAK 6: Prijavljivanje lokacije za performans
+
+1. Otvorite formular za dodavanje lokacije: **[https://forms.gle/zqu44HTUuif2xne56](https://forms.gle/zqu44HTUuif2xne56)**
+2. Popunite tražene podatke:
+   * **Grad** (za dijasporu navedite i državu)
+   * **Naziv lokacije**
+   * **Link ka mapi** (nakon što kreirate mapu u Google My Maps - videti korak 7)
+   * **Geografska širina (latitude)** – kopirajte vrednost iz poruke koja se pojavila prilikom eksporta KML fajla
+   * **Geografska dužina (longitude)** – kopirajte vrednost iz poruke koja se pojavila prilikom eksporta KML fajla
+   * Ostale tražene informacije (kontakt, broj učesnika, oprema za snimanje...)
+3. Kliknite **Submit** da prijavite svoju lokaciju.
+
+> **Napomena:** Koordinate centra oblika su automatski izračunate i prikazane prilikom eksporta KML fajla. Ove koordinate služe za evidenciju centralne tačke vašeg performansa.
+
+---
+
+## KORAK 7: Uvoz koordinata u Google My Maps
 
 1. Otvorite **[Google My Maps](https://www.google.com/mymaps)** i prijavite se svojim Google nalogom.  
 2. Kliknite **`+ CREATE A NEW MAP`**.  
