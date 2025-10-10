@@ -1,0 +1,24 @@
+name: Sync CSV from Google Sheets
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:         # allow manual run
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download latest CSV from Sheets
+        run: |
+          curl -L "https://docs.google.com/spreadsheets/d/e/2PACX-1vTlTZfVt9qSSTRf_f_gZyYJxXkIs8qnJTVMoqyzbInxaqv4GJBsf6sqYAezcCpyQx5rTHoGC3d6pAen/pub?gid=530645255&single=true&output=csv" -o export.csv
+
+      - name: Commit & push if changed
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "export.csv"
+          message: "chore: update export.csv from Sheets"
+          default_author: github_actions
