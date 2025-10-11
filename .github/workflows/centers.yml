@@ -1,18 +1,25 @@
-name: Compute MyMaps centers
+name: Extract MyMaps centers from export.csv
+
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   schedule:
-    - cron: '0 * * * *'  # na sat vremena
+    - cron: "0 */6 * * *"   # every 6 hours, tweak as you like
+
 jobs:
-  build:
+  run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - run: npm i fast-xml-parser node-fetch@3
-      - run: node scripts/get-centers.js
-      - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: update centers.json"
-          file_pattern: data/centers.json
+          node-version: 20
+      - run: npm i @tmcw/togeojson @xmldom/xmldom csv-parse
+      - name: Extract centers
+        run: node scripts/extract-centers.mjs
+      - name: Commit results
+        run: |
+          git config user.name "gh-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/centers.json
+          git commit -m "Update centers.json" || echo "No changes"
+          git push
