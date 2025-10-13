@@ -1,93 +1,47 @@
 <!doctype html>
 <html lang="sr">
 <head>
-  <meta charset="utf-8"/>
-  <title>11:52 — Gradovi i kontakti</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
-    .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
-    input[type="search"] { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; min-width: 260px; }
-    .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #ddd; }
-    .status-Regrutujemo { background: #ffe6e6; border-color: #f5b5b5; }
-    .status-Skoro { background: #fff1d6; border-color: #f3d38c; }
-    .status-Potvrđeno { background: #e7f8ea; border-color: #bfe7c6; }
-    .card { border: 1px solid #eee; border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
-    .city { font-weight: 700; }
-    .slot { font-weight: 600; }
-    .muted { color: #666; font-size: 12px; }
-    .grid { display: grid; gap: 8px; }
-  </style>
+  <meta charset="utf-8" />
+  <title>In memoriam — lokacije</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
 </head>
 <body>
-  <h1>11:52 — Gradovi i kontakti</h1>
-  <p>Pronađite svoj grad/slot i pridružite se preko bezbednog kontakta (Viber Community / Telegram / Instagram). Tačne lokacije se ne objavljuju javno.</p>
-
-  <div class="toolbar">
-    <input id="q" type="search" placeholder="Pretraži grad/slot…" />
-    <span id="count" class="muted"></span>
-  </div>
-
-  <div id="list" class="grid" aria-live="polite"></div>
-  <p class="muted" id="updated"></p>
+  <h1>In memoriam — lokacije</h1>
+  <table id="tbl" border="1" cellpadding="6">
+    <thead><tr><th>Grad/slot</th><th>Grad</th><th>Kontakt</th><th>Status</th></tr></thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-  (async function () {
-    // Fetch static JSON committed by the GitHub Action
-    const res = await fetch('./data/public_slots.json', { cache: 'no-store' });
-    if (!res.ok) {
-      document.getElementById('list').textContent = 'Nije moguće učitati podatke.';
-      return;
-    }
-    const rows = await res.json();
+  const URL = 'https://script.google.com/macros/u/5/s/AKfycbz9XwR9sw-mpJeIGL7tmUEY_9dtQBAyHaGnBwKsBMtmxE1PyzNGe9EH6K-SCJMGMzY/exec?token=bweobwbnwq13bbwmodfgwfgkermtm&format=json';
 
-    // Normalize + sort (by Grad, then slot)
-    const items = rows.map(r => ({
-      slot: (r['Public_slot_label'] || '').trim(),
-      grad: (r['Grad'] || '').trim(),
-      kontakt: (r['Kontakt'] || '').trim(),
-      status: (r['Status'] || '').trim()
-    })).filter(x => x.slot && x.kontakt);
-
-    items.sort((a,b)=> (a.grad.localeCompare(b.grad,'sr')) || a.slot.localeCompare(b.slot,'sr'));
-
-    const list = document.getElementById('list');
-    const count = document.getElementById('count');
-    const q = document.getElementById('q');
-
-    function statusClass(s) {
-      if (/potvr|confirmed/i.test(s)) return 'status-Potvrđeno';
-      if (/skoro/i.test(s)) return 'status-Skoro';
-      return 'status-Regrutujemo';
-    }
-
-    function render(filter='') {
-      list.innerHTML = '';
-      const needle = filter.trim().toLowerCase();
-      const filtered = needle
-        ? items.filter(x => (x.grad + ' ' + x.slot).toLowerCase().includes(needle))
-        : items;
-
-      filtered.forEach(x => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <div class="slot">${x.slot} <span class="badge ${statusClass(x.status)}">${x.status || 'Regrutujemo'}</span></div>
-          <div class="city">${x.grad}</div>
-          <div>Kontakt: <a href="${x.kontakt}" rel="noopener" target="_blank">${x.kontakt}</a></div>
+  fetch(URL)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(rows => {
+      const tbody = document.querySelector('#tbl tbody');
+      tbody.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(r['Public_slot_label'] || '')}</td>
+          <td>${escapeHtml(r['Grad'] || '')}</td>
+          <td><a href="${escapeAttr(r['Kontakt'] || '')}" target="_blank" rel="noopener">${escapeHtml(r['Kontakt'] || '')}</a></td>
+          <td>${escapeHtml(r['Status'] || '')}</td>
         `;
-        list.appendChild(card);
+        tbody.appendChild(tr);
       });
-      count.textContent = filtered.length ? `Prikazano: ${filtered.length}` : 'Nema rezultata.';
-    }
+    })
+    .catch(err => {
+      console.error(err);
+      document.querySelector('#tbl tbody').innerHTML =
+        `<tr><td colspan="4">Greška pri učitavanju podataka.</td></tr>`;
+    });
 
-    q.addEventListener('input', e => render(e.target.value));
-    render();
-
-    // “Last updated” = last commit time is not trivial from static hosting; show browser time instead.
-    document.getElementById('updated').textContent =
-      'Poslednje osveženo: ' + new Date().toLocaleString('sr-RS');
-  })();
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function escapeAttr(s){ return String(s).replace(/"/g,'&quot;'); }
   </script>
 </body>
 </html>
