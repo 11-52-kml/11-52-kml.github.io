@@ -1,0 +1,26 @@
+name: Update public slots
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:         # allow manual run
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch public slots JSON
+        env:
+          APPS_PUBLIC_URL: ${{ secrets.APPS_PUBLIC_URL }}
+        run: |
+          mkdir -p data
+          curl -fsSL "$APPS_PUBLIC_URL" -o data/public_slots.json
+          echo "Fetched $(wc -c < data/public_slots.json) bytes."
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(data): refresh public slots"
+          file_pattern: data/public_slots.json
