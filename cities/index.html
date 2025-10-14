@@ -4,16 +4,24 @@
   <meta charset="utf-8" />
   <title>In memoriam — lokacije</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 2em auto; padding: 0 1em; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+    thead { background-color: #f2f2f2; }
+    h1 { text-align: center; }
+  </style>
 </head>
 <body>
   <h1>In memoriam — lokacije</h1>
-  <table id="tbl" border="1" cellpadding="6">
+  <table id="tbl" cellpadding="6">
     <thead><tr><th>Grad/slot</th><th>Grad</th><th>Kontakt</th><th>Status</th></tr></thead>
     <tbody></tbody>
   </table>
 
   <script>
-  const URL = 'https://script.google.com/macros/u/5/s/AKfycbz9XwR9sw-mpJeIGL7tmUEY_9dtQBAyHaGnBwKsBMtmxE1PyzNGe9EH6K-SCJMGMzY/exec?token=bweobwbnwq13bbwmodfgwfgkermtm&format=json';
+  // CHANGE THIS LINE: Point to the local JSON file
+  const URL = 'data/public_slots.json';
 
   fetch(URL)
     .then(r => {
@@ -23,12 +31,22 @@
     .then(rows => {
       const tbody = document.querySelector('#tbl tbody');
       tbody.innerHTML = '';
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">Тренутно нема пријављених локација.</td></tr>';
+        return;
+      }
       rows.forEach(r => {
         const tr = document.createElement('tr');
+        // Make the contact link clickable only if it's a valid link
+        const kontakt = r['Kontakt'] || '';
+        const kontaktHtml = kontakt.startsWith('http') 
+          ? `<a href="${escapeAttr(kontakt)}" target="_blank" rel="noopener">${escapeHtml(kontakt)}</a>`
+          : escapeHtml(kontakt);
+          
         tr.innerHTML = `
           <td>${escapeHtml(r['Public_slot_label'] || '')}</td>
-          <td>${escapeHtml(r['Grad'] || '')}</td>
-          <td><a href="${escapeAttr(r['Kontakt'] || '')}" target="_blank" rel="noopener">${escapeHtml(r['Kontakt'] || '')}</a></td>
+          <td><b>${escapeHtml(r['Grad'] || '')}</b></td>
+          <td>${kontaktHtml}</td>
           <td>${escapeHtml(r['Status'] || '')}</td>
         `;
         tbody.appendChild(tr);
@@ -37,7 +55,7 @@
     .catch(err => {
       console.error(err);
       document.querySelector('#tbl tbody').innerHTML =
-        `<tr><td colspan="4">Greška pri učitavanju podataka.</td></tr>`;
+        `<tr><td colspan="4">Greška pri učitavanju podataka. Proverite da li je fajl <a href="${URL}">ovde</a>.</td></tr>`;
     });
 
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
