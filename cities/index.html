@@ -176,7 +176,7 @@
       .catch(err => {
         console.error(err);
         document.querySelector('#tbl tbody').innerHTML =
-          `<tr><td colspan="4" style="text-align:center;">Greška pri učitavanju podataka. Proverite da li je fajl <a href="${URL}">ovde</a>.</td></tr>`;
+          `<tr><td colspan="4" style="text-align:center;">Greška pri učitavanju podataka. Proverite da li je fajl  <a href="${URL}">ovde</a>.</td></tr>`;
       });
 
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
