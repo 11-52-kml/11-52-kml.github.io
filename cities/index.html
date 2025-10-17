@@ -1,115 +1,97 @@
-<!doctype html>
-<html lang="sr">
-<head>
-  <meta charset="utf-8" />
-  <title>In memoriam — Lokacije</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.7;color:#333;background:#fdfdfd;max-width:900px;margin:2em auto;padding:0 1.5em}
-    .container{border:1px solid #ddd;border-radius:8px;padding:1.5em 2em;background:#fff}
-    h1{text-align:center;border-bottom:1px solid #ddd;padding-bottom:.5em;margin-bottom:1em;font-size:2em}
-    table{border-collapse:collapse;width:100%;margin-top:1.5em}
-    th,td{padding:12px 15px;border-bottom:1px solid #ddd;text-align:left}
-    thead tr{background:#f2f2f2}
-    tbody tr:hover{background:#fafafa}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>„IN MEMORIAM“ — Lokacije</h1>
+<thead>
+  <tr>
+    <th>Grad</th>
+    <th>Kontakt</th>
+    <th>Status</th>
+  </tr>
+</thead>
 
-    <table id="tbl">
-      <thead>
-        <tr>
-          <th>Grad</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td style="text-align:center;">Učitavanje podataka...</td></tr>
-      </tbody>
-    </table>
-  </div>
+<script>
+  // Ako je sajt user/org Pages: ostavi apsolutnu putanju
+  // Ako je project Pages (/repo/), koristi relativnu (npr. "data/public_slots.json")
+  const URL = '/data/public_slots.json';
 
-  <script>
-    // If this HTML is in the repo root, use 'data/public_slots.json'.
-    // If it's inside a folder, keep '../data/public_slots.json' as needed.
-    const URL = '/data/public_slots.json';
+  // Ključevi iz različitih varijanti zaglavlja
+  const KEY_CITY = [
+    'Grad',
+    'Grad (za dijasporu, navesti i državu)'
+  ];
+  const KEY_CONTACT = [
+    'Bezbedan kontakt (Telegram grupa/Viber community, ili stranica ili grupa zbora/organizacije)',
+    'Kontakt',
+    'Kontakt grupa'
+  ];
+  const KEY_STATUS = ['Status'];
 
-    // Header name fallbacks (normalize various header texts to one concept)
-    const KEY_CITIES = [
-      'Grad',
-      'Grad (za dijasporu, navesti i državu)',
-      'Grad/Slot',
-      'Public_slot_label' // fallback if you decide to list slot label as the city
-    ];
-    const KEY_CONTACTS = [
-      'Kontakt',
-      'Bezbedan kontakt (Telegram grupa/Viber community, ili stranica ili grupa zbora/organizacije)',
-      'Kontakt grupa'
-    ];
-
-    // Helper to pick the first existing non-empty field among candidates
-    const pick = (row, keys) => {
-      for (const k of keys) {
-        if (Object.prototype.hasOwnProperty.call(row, k)) {
-          const v = String(row[k] ?? '').trim();
-          if (v) return v;
-        }
+  // Učitavanje i render
+  fetch(URL, { cache: 'no-store' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(rows => {
+      const tbody = document.querySelector('#tbl tbody');
+      tbody.innerHTML = '';
+      if (!Array.isArray(rows) || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Trenutno nema prijavljenih lokacija.</td></tr>';
+        return;
       }
-      return '';
-    };
 
-    fetch(URL)
-      .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .then(rows => {
-        const tbody = document.querySelector('#tbl tbody');
-        tbody.innerHTML = '';
-        if (!Array.isArray(rows) || rows.length === 0) {
-          tbody.innerHTML = '<tr><td style="text-align:center;">Trenutno nema prijavljenih lokacija.</td></tr>';
-          return;
-        }
+      // Normalizacija i (po želji) sortiranje po Gradu
+      const norm = rows.map(r => ({
+        grad: pick(r, KEY_CITY),
+        kontakt: pick(r, KEY_CONTACT),
+        status: pick(r, KEY_STATUS)
+      })).filter(x => x.grad);
 
-        rows.forEach(r => {
-          const city = pick(r, KEY_CITIES);
-          if (!city) return; // skip empty rows
+      norm.sort((a, b) => a.grad.localeCompare(b.grad, 'sr', { sensitivity: 'base' }));
 
-          const tr = document.createElement('tr');
-          // If you want the city to be a clickable link, replace the line below with the commented variant.
-          tr.innerHTML = `<td><b>${escapeHtml(city)}</b></td>`;
+      for (const {grad, kontakt, status} of norm) {
+        const tr = document.createElement('tr');
 
-          // // Clickable city linking to contact (optional):
-          // const contact = pick(r, KEY_CONTACTS);
-          // const href = toAbsoluteLink(contact);
-          // tr.innerHTML = href ? `<td><a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer"><b>${escapeHtml(city)}</b></a></td>`
-          //                      : `<td><b>${escapeHtml(city)}</b></td>`;
+        const href = toAbsoluteLink(kontakt);
+        const kontaktHtml = href
+          ? `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer nofollow">Pridruži se</a>`
+          : (kontakt ? escapeHtml(kontakt) : '');
 
-          tbody.appendChild(tr);
-        });
-      })
-      .catch(err => {
-        console.error(err);
-        document.querySelector('#tbl tbody').innerHTML =
-          `<tr><td style="text-align:center;">Greška pri učitavanju podataka. Otvorite <a href="${URL}">${URL}</a> da proverite da li JSON postoji.</td></tr>`;
-      });
+        tr.innerHTML = `
+          <td><b>${escapeHtml(grad)}</b></td>
+          <td>${kontaktHtml}</td>
+          <td>${escapeHtml(status)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      document.querySelector('#tbl tbody').innerHTML =
+        `<tr><td colspan="3" style="text-align:center;">Greška pri učitavanju podataka. Otvorite <a href="${URL}">${URL}</a> direktno.</td></tr>`;
+    });
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-    function escapeAttr(s){ return String(s).replace(/"/g,'&quot;'); }
-
-    // Optional normalizer for Telegram/Viber links if you later make city clickable
-    function toAbsoluteLink(s){
-      if (!s) return '';
-      let v = String(s).trim();
-      if (/^(t\.me\/|telegram\.me\/)/i.test(v)) v = 'https://' + v;   // ensure scheme for t.me
-      if (/^\/\//.test(v)) v = 'https:' + v;                          // protocol-relative -> https
-      if (!/^https?:\/\//i.test(v)) return '';                         // allow only http(s)
-      return v;
+  // --- Helpers ---
+  function pick(row, keys){
+    for (const k of keys) {
+      if (Object.prototype.hasOwnProperty.call(row, k)) {
+        const v = String(row[k] ?? '').trim();
+        if (v) return v;
+      }
     }
-  </script>
-</body>
-</html>
+    return '';
+  }
+  function toAbsoluteLink(s){
+    if (!s) return '';
+    let v = String(s).trim();
+
+    // Telegram: dozvoli t.me/ i telegram.me/ bez šeme -> dodaj https://
+    if (/^(t\.me\/|telegram\.me\/)/i.test(v)) v = 'https://' + v;
+
+    // Protocol-relative -> https
+    if (/^\/\//.test(v)) v = 'https:' + v;
+
+    // Dozvoli samo http(s)
+    if (!/^https?:\/\//i.test(v)) return '';
+    return v;
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function escapeAttr(s){ return String(s).replace(/"/g,'&quot;'); }
+</script>
