@@ -76,8 +76,8 @@
       <thead>
         <tr>
           <th>Grad</th>
-          <th>Kontakt</th>
           <th>Status</th>
+          <th>Kontakt</th>
         </tr>
       </thead>
       <tbody>
@@ -156,10 +156,10 @@
               : escapeHtml(label || '');
 
             tr.innerHTML = `
-              <td><b>${escapeHtml(grad)}</b></td>
-              <td>${kontaktCell}</td>
-              <td>${escapeHtml(status || '')}</td>
-            `;
+                <td><b>${escapeHtml(grad)}</b></td>
+                <td>${escapeHtml(status || '')}</td>
+                <td>${kontaktCell}</td>
+              `;
             tbody.appendChild(tr);
           });
       })
